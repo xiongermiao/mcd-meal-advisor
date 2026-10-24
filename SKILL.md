@@ -452,6 +452,7 @@ agent_created: true
 
 ### 门店与菜单数据形态
 - query-meals 的 `data.categories` 是"推荐位"聚合，同一 code 会重复出现；真实商品详情在 `data.meals` map，`data.frequent` 是常点。
+- **`data.frequent` 只在到店型菜单里稳定出现，外送场景实测可能不返回**（只有 categories + meals）。用户说"点我常点的"时，若该次 query-meals 没有 frequent，回退到 `order-list` 历史自行统计，并说明"这是按你的历史订单推的"，不得假装是接口给的常点。
 - 换套餐内小食/饮料时，roundList 的 `round` 字段填 `rounds[].id` 的**字符串**形式（如 "1"、"2"），不是数字。
 - 积分兑换：mall-create-order 仅支持 shopId=2；spuCategory=1 虚拟券、2 实物（实物需 addressId）。派对类活动走 party-order-create，不走此接口。
 - **餐品搭配规则**（query-meals 内置）：20 元以下配小食；20-30 汉堡+小食或饮料；30-40 汉堡+薯条/小食+饮料；40-50 汉堡+薯条+小食+饮料；50 以上丰富组合、优先不重复小食。
