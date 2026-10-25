@@ -479,7 +479,7 @@ agent_created: true
 ### 商品与券
 - **两套商品体系**：常规菜单商品 vs 券虚拟商品，券商品不在普通 query-meals 列表里。用券时必须传券自带的 `products[].productCode` + couponId + couponCode，不能拿普通菜单的 code 硬配。
 - **query-my-coupons 只能展示、不能算价**（不返回 couponId/couponCode）。凡涉及金额一律走 query-store-coupons 拿可算价的券。
-- **套餐默认直接传 productCode 即可算价**，不必拆 roundList。只有用户要换套餐内小食/饮料时才用 query-meal-detail 的 rounds 结构。
+- **套餐默认直接传 productCode 即可算价**，不必拆 roundList。用得到 `query-meal-detail` 的 rounds 结构只有两种情形：**换套餐内小食/饮料**，以及**算整餐营养**（营养库无套餐，必须拆到单品加总，见 `references/nutrition.md`）。
 - **随单购是陷阱**：discountType 标"随单购麦金卡优惠"的商品，优惠价前提是先买麦金卡（withOrder.membershipCode / membershipSpecId），不得当普通优惠推荐。
 - 参数名不一致：query-meals 返回 `withOrder.specId`，calculate-price 入参是 `membershipSpecId`。
 - 特调 key：含 unselectedKey 的组，组内所有项都要传，选中用 selectedKey、未选中用 unselectedKey，漏传会导致价格或商品不一致。
