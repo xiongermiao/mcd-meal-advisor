@@ -16,16 +16,26 @@ agent_created: true
 
 ## 一、主流程
 
-| 步 | 名称 | 核心动作 | 关键调用 |
-|---|---|---|---|
-| 1 | 确定点餐场景 | 场景四元组 + 时间意图 + 履约定位（**按取餐大方式分叉**：到店型=门店+取餐方式／配送型=配送地址+系统指派门店）→ 接口参数 | 时间识别见第二章；履约定位见第三章；query-nearby-stores / delivery-query-addresses → delivery-query-stores |
-| 2 | 检查权益 | 盘点券与积分，临期才提醒 | query-my-account、query-store-coupons |
-| 3 | 查询餐品并筛选 | 按硬约束过滤候选（前置：到店型门店 confirmed；配送型 addressId confirmed 且已拿到可配送门店） | query-meals、query-meal-detail、list-nutrition-foods |
-| 4 | 搭配试算与展示 | 排序、核价、出候选方案卡（匹配/搭配/价格/推荐理由/指标） | calculate-price、query-promotions |
-| 5 | 用户选择 | 唯一确认闸门 | 无（纯对话） |
-| 6 | 执行积分兑换 | 扣分换券，券回流后重算价 | mall-points-products → mall-product-detail → mall-create-order → 回第 4 步 |
-| 7 | 确定最终用餐方案 | 产出最终确认单，等用户明确下单指令 | 无（纯对话） |
-| 8 | 创建订单（不支付） | 用户确认后下单，支付入口交还用户 | create-order |
+八步编号是全文的引用锚（"回第 4 步""第 7 步"都指它），**但第 2、3 步之间没有依赖，必须同批发**——实测逐个串行会白等 27 秒。
+
+| 步 | 名称 | 核心动作 | 关键调用 | 前置依赖 | 可并行 |
+|---|---|---|---|---|---|
+| 1 | 确定点餐场景 | 场景四元组 + 时间意图 + 履约定位（**按取餐大方式分叉**：到店型=门店+取餐方式／配送型=配送地址+系统指派门店）→ 接口参数 | 时间识别见第二章；履约定位见第三章；query-nearby-stores / delivery-query-addresses → delivery-query-stores | — | 单独执行，后续全要它的 storeCode / addressId |
+| 2 | 检查权益 | 盘点券与积分，临期才提醒 | query-my-account、query-store-coupons | 第 1 步 | **与第 3 步同批** |
+| 3 | 查询餐品并筛选 | 按硬约束过滤候选（前置：到店型门店 confirmed；配送型 addressId confirmed 且已拿到可配送门店） | query-meals、list-nutrition-foods | 第 1 步 | **与第 2 步同批** |
+| 4 | 搭配试算与展示 | 排序、核价、出候选方案卡（匹配/搭配/价格/推荐理由/指标） | query-meal-detail（拆套餐/特调，依赖候选商品）、calculate-price、query-promotions | 第 2、3 步 | 多个候选的拆解与核价可同批 |
+| 5 | 用户选择 | 唯一确认闸门 | 无（纯对话） | 第 4 步 | — |
+| 6 | 执行积分兑换 | 扣分换券，券回流后重算价 | mall-points-products → mall-product-detail → mall-create-order → 回第 4 步 | 第 5 步 | **串行，一次一单** |
+| 7 | 确定最终用餐方案 | 产出最终确认单，等用户明确下单指令 | 无（纯对话） | 第 6 步或直接第 5 步 | — |
+| 8 | 创建订单（不支付） | 用户确认后下单，支付入口交还用户 | create-order | 第 7 步 + 用户明确指令 | **永不并行（写操作）** |
+
+**三条并行判据：**
+
+1. **无数据依赖即同批**。两次只读调用之间，只要 B 的入参不来自 A 的返回，就必须在同一批发出去。第 2、3 步的 `query-my-account` / `query-store-coupons` / `query-meals` / `list-nutrition-foods` 四者在拿到 storeCode 后互不依赖。
+2. **写操作永不并行**。`create-order`、`mall-create-order`、`cancel-order`、`auto-bind-coupons` 一次只发一个，且必须等上一个有结论再发下一个。
+3. **并行结果全部落地再加工**。不得拿到第一个返回就开始出方案卡，否则卡里的券、营养、价格来自不同批次的半成品。
+
+**并行中某个只读调用失败**：其余结果照用，但必须在展示里点名缺了哪一项（"券信息没取到，本次按无券核价"）。禁止静默按空值处理——空值和"没有券"在展示上是同一句话，却意味着完全不同的钱。
 
 **第 7 / 8 步的语义**：落定是"方案已确认、可以直接下单"，不是"订单已创建"。用户必须另外明确说"下单/创建订单"才进第 8 步。第 8 步的边界是**创建订单为止，不做支付**：下单后把支付入口交给用户，不代付、不宣称支付结果。
 
