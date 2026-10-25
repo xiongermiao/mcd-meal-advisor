@@ -4,12 +4,14 @@
 
 能力边界到**创建订单**为止，不代付、不查询支付结果。
 
-## 三份材料怎么读
+## 材料怎么读
 
 | 材料 | 文件 | 适合什么时候看 |
 |---|---|---|
 | 能用的作品 | [`SKILL.md`](SKILL.md) + `references/` | 看规则正文 |
 | 使用说明 | **[`USAGE.md`](USAGE.md)** | 想装起来试一遍——含安装、触发话术、**三个零风险验证用例**（不建单、不扣分） |
+| MCP 集成说明 | **[`MCP_INTEGRATION.md`](MCP_INTEGRATION.md)** | 想知道调了哪些工具、按什么顺序调、为什么这么调 |
+| 配置示例 | [`mcp-config.example.json`](mcp-config.example.json) | 装之前对一下配置格式（只有环境变量占位符） |
 | 开发对话记录 | **[`workbuddy.md`](workbuddy.md)** | 想看它是怎么做出来的——五轮迭代、三个关键决策、10 条踩坑、7 项未完成 |
 
 想直接判断"是不是真跑通了"，看 [`docs/test-report.md`](docs/test-report.md)：12 条用例实测，**主动判了 3 条不合格**。
